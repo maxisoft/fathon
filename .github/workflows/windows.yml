@@ -121,7 +121,7 @@ jobs:
       run: uv build --wheel --verbose --no-build-isolation
 
     - name: uv lock
-      run: uv lock && uv export --format requirements-txt
+      run: uv lock && uv export --format requirements-txt --output-file dist/requirements.txt
 
     - name: Generate artifact attestation
       if: github.event_name == 'workflow_dispatch' && inputs.generate-attestation
@@ -130,7 +130,15 @@ jobs:
         subject-path: "dist/*.whl"
 
     - name: Install fathon from wheel
-      run: uv pip install dist/*.whl
+      shell: pwsh
+      run: |
+        $wheelFile = Get-ChildItem -Path "dist/fathon-*.whl"
+        if ($wheelFile.Count -ne 1) {
+          Write-Host "Contents of dist/ directory:"
+          Get-ChildItem -Path "dist/"
+          throw "Error: Expected to find exactly one 'fathon-*.whl' file, but found $($wheelFile.Count)."
+        }
+        uv pip install "$wheelFile.FullName"
 
     - name: Run tests
       run: uv run pytest tests/
@@ -142,14 +150,7 @@ jobs:
         name: fathon-wheel-${{ matrix.python-version }}
         path: dist/
 
-    - name: Upload requirements.txt Artifact
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: fathon-requirements-${{ matrix.python-version }}
-        path: requirements.txt
-
-    - name: Upload GSL Library Artifact
+    - name: Upload Vcpkg Packages Artifact
       if: always()
       uses: actions/upload-artifact@v4
       with:
