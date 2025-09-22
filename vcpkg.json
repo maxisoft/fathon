@@ -1,0 +1,7 @@
+{
+  "name": "fathon",
+  "version-string": "1.3.3",
+  "dependencies": [
+    "gsl"
+  ]
+}
