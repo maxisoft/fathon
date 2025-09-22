@@ -3,6 +3,8 @@ name: Windows CI
 on:
   push:
     branches: [ master ]
+    tags:
+      - 'v*.*.*'
   pull_request:
     branches: [ master ]
   workflow_dispatch:
@@ -124,7 +126,7 @@ jobs:
       run: uv lock && uv export --format requirements-txt --output-file dist/requirements.txt
 
     - name: Generate artifact attestation
-      if: github.event_name == 'workflow_dispatch' && inputs.generate-attestation
+      if: (github.event_name == 'workflow_dispatch' && inputs.generate-attestation) || github.ref_type == 'tag'
       uses: actions/attest-build-provenance@v1
       with:
         subject-path: "dist/*.whl"
@@ -157,3 +159,69 @@ jobs:
         name: gsl-libs-${{ matrix.python-version }}
         path: ${{ github.workspace }}/vcpkg/packages/
         retention-days: 3
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    needs: build
+    permissions:
+      contents: write # Required to create a release and upload assets
+
+    steps:
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Prepare release assets
+        run: |
+          set -e
+          mkdir -p release-assets
+
+          echo "--- Locating wheel files ---"
+          WHEELS=$(find artifacts -type f -name "*.whl")
+          if [ -z "$WHEELS" ]; then
+            echo "::error::No wheel files found in artifacts."
+            exit 1
+          fi
+          echo "Found $(echo "$WHEELS" | wc -l) wheel(s)."
+          echo "$WHEELS" | while IFS= read -r wheel; do
+            cp "$wheel" release-assets/
+          done
+
+          echo "--- Locating attestation files ---"
+          ATTESTATIONS=$(find artifacts -type f -name "*.intoto.jsonl")
+          if [ -n "$ATTESTATIONS" ]; then
+            echo "Found $(echo "$ATTESTATIONS" | wc -l) attestation(s)."
+            echo "$ATTESTATIONS" | while IFS= read -r attestation; do
+              cp "$attestation" release-assets/
+            done
+          else
+            echo "No attestation files found (this is expected if not generated)."
+          fi
+
+          echo "--- Locating requirements files ---"
+          REQUIREMENTS=$(find artifacts -type f -name "requirements.txt")
+          if [ -n "$REQUIREMENTS" ]; then
+            echo "Found $(echo "$REQUIREMENTS" | wc -l) requirements.txt file(s)."
+            echo "$REQUIREMENTS" | while IFS= read -r req_file; do
+              # Path is like: artifacts/fathon-wheel-3.11/dist/requirements.txt
+              # We want to get 'fathon-wheel-3.11'
+              artifact_dir=$(basename "$(dirname "$(dirname "$req_file")")")
+              new_name="requirements-${artifact_dir}.txt"
+              cp "$req_file" "release-assets/$new_name"
+              echo "  Copied and renamed to $new_name"
+            done
+          fi
+
+          echo "--- Final release assets ---"
+          ls -lR release-assets
+          echo "Total assets to upload: $(find release-assets -type f | wc -l)"
+
+      - name: Create Draft Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true
+          draft: true
