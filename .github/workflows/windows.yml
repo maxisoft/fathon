@@ -22,6 +22,11 @@ on:
         required: false
         type: string
         default: ''
+      uv-version:
+        description: 'Optional uv version'
+        required: false
+        type: string
+        default: 'latest'
 
 jobs:
   build:
@@ -53,6 +58,7 @@ jobs:
       uses: astral-sh/setup-uv@v1
       with:
         enable-cache: true
+        version: "${{ inputs.uv-version || 'latest' }}"
         
     - name: Install python & Create Virtual Environment
       if: matrix.python-version == 'latest'
