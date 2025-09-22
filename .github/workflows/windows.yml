@@ -36,6 +36,11 @@ jobs:
       matrix:
         python-version: ['3.11', '3.12', '3.13', '3.x']
 
+    env:
+      # 👇 Force triplet for all vcpkg installs
+      VCPKG_DEFAULT_TRIPLET: x64-windows-static
+      VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static
+
     steps:
     - uses: actions/checkout@v4
 
@@ -47,7 +52,6 @@ jobs:
     - name: Set up uv and Python
       uses: astral-sh/setup-uv@v1
       with:
-        python-version: ${{ matrix.python-version }}
         enable-cache: true
 
     - name: Create Virtual Environment
@@ -93,7 +97,7 @@ jobs:
 
     - name: Build fathon wheel
       # Use --no-build-isolation to make the GSL_DIR env var available to setup.py
-      run: uv build --wheel --verbose --no-build-isolation
+      run: uv pip wheel . --no-build-isolation
 
     - name: Generate artifact attestation
       if: github.event_name == 'workflow_dispatch' && inputs.generate-attestation
