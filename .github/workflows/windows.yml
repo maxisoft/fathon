@@ -138,7 +138,7 @@ jobs:
           Get-ChildItem -Path "dist/"
           throw "Error: Expected to find exactly one 'fathon-*.whl' file, but found $($wheelFile.Count)."
         }
-        uv pip install "$wheelFile.FullName"
+        uv pip install "$($wheelFile.FullName)"
 
     - name: Run tests
       run: uv run pytest tests/
@@ -156,3 +156,4 @@ jobs:
       with:
         name: gsl-libs-${{ matrix.python-version }}
         path: ${{ github.workspace }}/vcpkg/packages/
+        retention-days: 3
