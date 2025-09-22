@@ -117,7 +117,7 @@ jobs:
             sys.exit(1)
 
         vcpkg_triplet = r'''${{ env.VCPKG_DEFAULT_TRIPLET || env.VCPKG_DEFAULT_HOST_TRIPLET }}'''
-        gsl_dir = Path(vcpkg_install_root) / 'installed' / vcpkg_triplet
+        gsl_dir = Path(vcpkg_install_root) / 'packages' / f'gsl_{vcpkg_triplet}'
 
         github_env_file = os.environ["GITHUB_ENV"]
         with open(github_env_file, "a", encoding="utf-8") as f:
