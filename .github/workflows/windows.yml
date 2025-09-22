@@ -12,6 +12,11 @@ on:
         required: true
         type: boolean
         default: false
+      vcpkg-commit-id:
+        description: 'Optional vcpkg commit ID to use for the build'
+        required: false
+        type: string
+        default: '120deac3062162151622ca4860575a33844ba10b'
 
 jobs:
   build:
@@ -29,45 +34,36 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v2
+
     - name: Set up uv and Python
       uses: astral-sh/setup-uv@v1
       with:
         python-version: ${{ matrix.python-version }}
         enable-cache: true
 
+    - name: Create Virtual Environment
+      run: uv venv
+
     - name: Cache vcpkg dependencies
+      id: cache-vcpkg
       uses: actions/cache@v4
       with:
-        # The path to the directory where vcpkg installs the libraries
         path: ${{ github.workspace }}/vcpkg/installed
-        # The key is composed of the runner OS, the hash of the vcpkg manifest,
-        # and the pinned vcpkg commit ID to ensure the cache is specific and reproducible.
-        key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}-${{ '120deac3062162151622ca4860575a33844ba10b' }}
+        key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}-${{ inputs.vcpkg-commit-id || '120deac3062162151622ca4860575a33844ba10b' }}
         restore-keys: |
           vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}-
 
-    - name: Attempt to install GSL with pinned vcpkg
-      id: vcpkg_pinned
+    - name: Run vcpkg
       uses: lukka/run-vcpkg@v11
       with:
         runVcpkgInstall: true
-        vcpkgGitCommitId: '120deac3062162151622ca4860575a33844ba10b'
-      continue-on-error: true
-
-    - name: Attempt to install GSL with latest vcpkg (on failure)
-      id: vcpkg_latest
-      if: steps.vcpkg_pinned.outcome == 'failure'
-      uses: lukka/run-vcpkg@v11
-      with:
-        runVcpkgInstall: true # No commit ID, so it uses the latest vcpkg
+        vcpkgGitCommitId: ${{ inputs.vcpkg-commit-id || '120deac3062162151622ca4860575a33844ba10b' }}
 
     - name: Set GSL_DIR Environment Variable
       shell: pwsh
       run: |
-        if ($env:VCPKG_ROOT -eq $null) {
-          echo "::error::vcpkg installation failed, VCPKG_ROOT is not set."
-          exit 1
-        }
         $gsl_dir = "$($env:VCPKG_ROOT)/installed/$($env:VCPKG_DEFAULT_TRIPLET)"
         echo "GSL_DIR=$gsl_dir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         echo "GSL_DIR permanently set for this job: $gsl_dir"
@@ -76,7 +72,6 @@ jobs:
       run: uv pip install cython wheel pytest setuptools
 
     - name: Build fathon wheel
-      # Use --no-isolation to make the GSL_DIR env var available to setup.py
       run: uv wheel . -w dist --verbose --no-isolation
 
     - name: Generate artifact attestation
@@ -89,7 +84,6 @@ jobs:
       run: uv pip install dist/*.whl
 
     - name: Run tests
-      # Use 'uv run' to execute tests within the uv-managed environment
       run: uv run pytest tests/
 
     - name: Upload Wheel Artifact
