@@ -20,10 +20,6 @@ jobs:
       contents: read   # Required to read source code
       attestations: write # Required to write attestations
 
-    # Use uv in the system python environment for all steps
-    env:
-      UV_SYSTEM_PYTHON: 1
-
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -37,7 +33,7 @@ jobs:
       uses: astral-sh/setup-uv@v1
       with:
         python-version: ${{ matrix.python-version }}
-        # Caching is enabled by default in the action
+        enable-cache: true
 
     - name: Attempt to install GSL with pinned vcpkg
       id: vcpkg_pinned
@@ -66,7 +62,7 @@ jobs:
         echo "GSL_DIR permanently set for this job: $gsl_dir"
 
     - name: Install Python dependencies
-      run: uv pip install cython wheel pytest
+      run: uv pip install cython wheel pytest setuptools
 
     - name: Build fathon wheel
       # Use --no-isolation to make the GSL_DIR env var available to setup.py
@@ -82,7 +78,8 @@ jobs:
       run: uv pip install dist/*.whl
 
     - name: Run tests
-      run: pytest tests/
+      # Use 'uv run' to execute tests within the uv-managed environment
+      run: uv run pytest tests/
 
     - name: Upload Wheel Artifact
       if: always()
