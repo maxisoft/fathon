@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.11', '3.12', '3.13', '>=3.14<4']
+        python-version: ['3.11', '3.12', '3.13', 'latest']
 
     env:
       # 👇 Force triplet for all vcpkg installs
@@ -53,8 +53,16 @@ jobs:
       uses: astral-sh/setup-uv@v1
       with:
         enable-cache: true
+        
+    - name: Install python & Create Virtual Environment
+      if: matrix.python-version == 'latest'
+      run: |
+        uv python list
+        uv python install
+        uv venv
 
     - name: Create Virtual Environment
+      if: matrix.python-version != 'latest'
       run: uv venv --python "${{ matrix.python-version }}"
 
     - name: Cache vcpkg dependencies
@@ -86,23 +94,25 @@ jobs:
         exit 1
 
     - name: Set GSL_DIR Environment Variable
-      shell: pwsh
+      shell: python
       run: |
-        if ('${{ steps.vcpkg_pinned.outcome }}' -eq 'success') {
-          $install_root = '${{ steps.vcpkg_pinned.outputs.vcpkgInstallRoot }}'
-        } elseif ('${{ steps.vcpkg_latest.outcome }}' -eq 'success') {
-          $install_root = '${{ steps.vcpkg_latest.outputs.vcpkgInstallRoot }}'
-        } else {
-          echo "::error::Could not determine vcpkg installation root from run-vcpkg steps."
-          exit 1
-        }
-        if (-not $install_root) {
-            echo "::error::vcpkgInstallRoot output from run-vcpkg is empty."
-            exit 1
-        }
-        $gsl_dir = Join-Path -Path $install_root -ChildPath $env:VCPKG_DEFAULT_TRIPLET
-        echo "GSL_DIR=$gsl_dir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "GSL_DIR permanently set for this job: $gsl_dir"
+        import os
+        import sys
+        from pathlib import Path
+
+        vcpkg_install_root = '${{ env.RUNVCPKG_VCPKG_ROOT || env.VCPKG_ROOT }}'
+        if not vcpkg_install_root:
+            print("::error::RUNVCPKG_VCPKG_ROOT environment variable is not set. This indicates a problem with the vcpkg installation step.")
+            sys.exit(1)
+
+        vcpkg_triplet = '${{ env.VCPKG_DEFAULT_TRIPLET || env.VCPKG_DEFAULT_HOST_TRIPLET }}'
+        gsl_dir = Path(vcpkg_install_root) / 'installed' / vcpkg_triplet
+
+        github_env_file = os.environ["GITHUB_ENV"]
+        with open(github_env_file, "a", encoding="utf-8") as f:
+            f.write(f"GSL_DIR={gsl_dir}\n")
+
+        print(f"GSL_DIR successfully set for this job: {gsl_dir}")
 
     - name: Install Python dependencies
       run: uv pip install cython wheel pytest setuptools
