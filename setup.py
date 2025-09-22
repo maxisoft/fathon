@@ -61,7 +61,9 @@ def get_gsl_paths():
             # Find a key GSL header
             for include_path in candidate.rglob("gsl_multifit.h"):
                 if include_path.is_file():
-                    include_dir = include_path.parent
+                    gsl_dir = include_path.parent
+                    if gsl_dir.parent.name == "gsl":
+                        include_dir = gsl_dir.parent
                     break
 
             if lib_dir and include_dir:

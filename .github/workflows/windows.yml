@@ -61,7 +61,7 @@ jobs:
       with:
         vs-version: ${{ inputs.vs-version }}
 
-    - name: Set up uv and Python
+    - name: Set up uv
       uses: astral-sh/setup-uv@v1
       with:
         enable-cache: true
@@ -82,7 +82,7 @@ jobs:
       id: cache-vcpkg
       uses: actions/cache@v4
       with:
-        path: ${{ github.workspace }}/vcpkg/installed
+        path: ${{ github.workspace }}/vcpkg
         key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}-${{ inputs.vcpkg-commit-id }}-${{ inputs.vs-version }}
         restore-keys: |
           vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}-${{ inputs.vcpkg-commit-id }}-
@@ -117,7 +117,7 @@ jobs:
       run: uv pip install cython wheel pytest setuptools numpy${{ inputs.numpy-version }}
 
     - name: Build fathon wheel
-      # Use --no-build-isolation to make the GSL_DIR env var available to setup.py
+      # Use --no-build-isolation to make the env vars available to setup.py
       run: uv build --wheel --verbose --no-build-isolation
 
     - name: uv lock
@@ -154,4 +154,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: gsl-libs-${{ matrix.python-version }}
-        path: ${{ env.GSL_DIR }}
+        path: ${{ github.workspace }}/vcpkg/packages/
