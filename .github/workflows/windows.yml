@@ -5,6 +5,13 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      generate-attestation:
+        description: 'Generate SLSA build provenance attestation'
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -28,9 +35,11 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: run vcpkg
+    - name: Setup and run vcpkg
       uses: lukka/run-vcpkg@v11
       with:
+        # This tells the action to find vcpkg.json and run 'vcpkg install'
+        runVcpkgInstall: true
         vcpkgGitCommitId: '5b1214315250939257ef5d62ecdcbca18cf4fb1c' # Pin vcpkg version for reproducibility
 
     - name: Install Python dependencies
@@ -47,6 +56,8 @@ jobs:
         python -m pip wheel . -w dist --verbose
 
     - name: Generate artifact attestation
+      # This step only runs when the workflow is manually dispatched with the 'generate-attestation' input set to true.
+      if: github.event_name == 'workflow_dispatch' && inputs.generate-attestation
       uses: actions/attest-build-provenance@v1
       with:
         subject-path: "dist/*.whl"
