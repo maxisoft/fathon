@@ -50,6 +50,7 @@ jobs:
       # 👇 Force triplet for all vcpkg installs
       VCPKG_DEFAULT_TRIPLET: x64-windows-static
       VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static
+      AUTO_SEARCH_VCPKG_GSL: "true"
 
     steps:
     - uses: actions/checkout@v4
@@ -103,31 +104,6 @@ jobs:
       run: |
         echo "::error::Both pinned and latest vcpkg installations failed."
         exit 1
-
-    - name: Set GSL_DIR Environment Variable
-      shell: python
-      run: |
-        import os
-        import sys
-        from pathlib import Path
-        
-        vcpkg_triplet = r'''${{ env.VCPKG_DEFAULT_TRIPLET || env.VCPKG_DEFAULT_HOST_TRIPLET }}'''
-        
-        gsl_dir = Path() / 'vcpkg_installed' / vcpkg_triplet
-        if not gsl_dir.exists():
-          vcpkg_install_root = r'''${{ env.RUNVCPKG_VCPKG_ROOT || env.VCPKG_ROOT }}'''
-          if not vcpkg_install_root:
-              print("::error::RUNVCPKG_VCPKG_ROOT environment variable is not set. This indicates a problem with the vcpkg installation step.")
-              sys.exit(1)
-  
-          
-          gsl_dir = Path(vcpkg_install_root) / 'packages' / f'gsl_{vcpkg_triplet}'
-        
-        github_env_file = os.environ["GITHUB_ENV"]
-        with open(github_env_file, "a", encoding="utf-8") as f:
-            f.write(f"GSL_DIR={gsl_dir.resolve().as_posix()}\n")
-
-        print(f"GSL_DIR successfully set for this job: {gsl_dir}")
 
     - name: Install Python dependencies
       run: uv pip install cython wheel pytest setuptools numpy${{ inputs.numpy-version }}

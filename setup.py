@@ -24,6 +24,53 @@ def get_gsl_paths():
         else:
             warnings.warn(f"GSL_DIR ('{gsl_dir}') is set, but it's not a valid GSL installation directory.")
 
+    if os.environ.get("AUTO_SEARCH_VCPKG_GSL", "").upper() in {"TRUE", "1", "YES", "Y"}:
+        print("AUTO_SEARCH_VCPKG_GSL is set. Searching for GSL in vcpkg directories...")
+
+        def gen_vcpkg_paths():
+            # 1. From environment variables set by actions/run-vcpkg
+
+            base_paths = {Path.cwd(), Path(__file__).parent}
+            vcpkg_root_env = os.getenv("RUNVCPKG_VCPKG_ROOT") or os.getenv("VCPKG_ROOT")
+            if vcpkg_root_env:
+                vcpkg_root = Path(vcpkg_root_env)
+                if vcpkg_root.is_dir():
+                    yield vcpkg_root
+                    base_paths.add(vcpkg_root)
+                    base_paths.add(vcpkg_root.parent)
+
+            # 2. Common project-local vcpkg directories (for manifest mode)
+            # Using a set to avoid duplicates if cwd is same as script dir
+            for base_path in base_paths:
+                yield base_path / "vcpkg_installed"
+                yield base_path / "vcpkg"
+
+        for candidate in gen_vcpkg_paths():
+            print(f"  Searching in: {candidate.resolve()}")
+            if not candidate.is_dir():
+                continue
+
+            lib_dir = None
+            include_dir = None
+
+            # Find a non-debug gsl.lib
+            for lib_path in candidate.rglob("gsl.lib"):
+                # Check if 'debug' is a component of the path to avoid debug builds
+                if lib_path.is_file() and 'debug' not in (p.lower() for p in lib_path.parts):
+                    lib_dir = lib_path.parent
+                    break
+            # Find a key GSL header
+            for include_path in candidate.rglob("gsl_multifit.h"):
+                if include_path.is_file():
+                    include_dir = include_path.parent
+                    break
+
+            if lib_dir and include_dir:
+                print(f"Found GSL via auto-search in: {candidate.resolve()}")
+                print(f"  Include path: {include_dir}")
+                print(f"  Library path: {lib_dir}")
+                return str(include_dir), str(lib_dir)
+
     system = platform.system()
     if system == "Windows":
         candidate_paths = [
