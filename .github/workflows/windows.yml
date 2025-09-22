@@ -111,12 +111,12 @@ jobs:
         import sys
         from pathlib import Path
 
-        vcpkg_install_root = '${{ env.RUNVCPKG_VCPKG_ROOT || env.VCPKG_ROOT }}'
+        vcpkg_install_root = r'''${{ env.RUNVCPKG_VCPKG_ROOT || env.VCPKG_ROOT }}'''
         if not vcpkg_install_root:
             print("::error::RUNVCPKG_VCPKG_ROOT environment variable is not set. This indicates a problem with the vcpkg installation step.")
             sys.exit(1)
 
-        vcpkg_triplet = '${{ env.VCPKG_DEFAULT_TRIPLET || env.VCPKG_DEFAULT_HOST_TRIPLET }}'
+        vcpkg_triplet = r'''${{ env.VCPKG_DEFAULT_TRIPLET || env.VCPKG_DEFAULT_HOST_TRIPLET }}'''
         gsl_dir = Path(vcpkg_install_root) / 'installed' / vcpkg_triplet
 
         github_env_file = os.environ["GITHUB_ENV"]
@@ -130,7 +130,9 @@ jobs:
 
     - name: Build fathon wheel
       # Use --no-build-isolation to make the GSL_DIR env var available to setup.py
-      run: uv run python -m pip wheel . --no-build-isolation -w dist
+      run: |
+        uv build --wheel --verbose --no-build-isolation
+        uv lock
 
     - name: Generate artifact attestation
       if: github.event_name == 'workflow_dispatch' && inputs.generate-attestation
