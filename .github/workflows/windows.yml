@@ -17,6 +17,11 @@ on:
         required: false
         type: string
         default: '120deac3062162151622ca4860575a33844ba10b'
+      vs-version:
+        description: 'Optional Visual Studio version range (e.g., "[17.0,18.0)")'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   build:
@@ -36,6 +41,8 @@ jobs:
 
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@v2
+      with:
+        vs-version: ${{ inputs.vs-version }}
 
     - name: Set up uv and Python
       uses: astral-sh/setup-uv@v1
@@ -51,15 +58,30 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/vcpkg/installed
-        key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}-${{ inputs.vcpkg-commit-id || '120deac3062162151622ca4860575a33844ba10b' }}
+        key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}-${{ inputs.vcpkg-commit-id }}-${{ inputs.vs-version }}
         restore-keys: |
-          vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}-
+          vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}-${{ inputs.vcpkg-commit-id }}-
 
-    - name: Run vcpkg
+    - name: Attempt to install GSL with pinned vcpkg
+      id: vcpkg_pinned
       uses: lukka/run-vcpkg@v11
       with:
         runVcpkgInstall: true
-        vcpkgGitCommitId: ${{ inputs.vcpkg-commit-id || '120deac3062162151622ca4860575a33844ba10b' }}
+        vcpkgGitCommitId: ${{ inputs.vcpkg-commit-id }}
+      continue-on-error: true
+
+    - name: Attempt to install GSL with latest vcpkg (on failure)
+      id: vcpkg_latest
+      if: steps.vcpkg_pinned.outcome == 'failure'
+      uses: lukka/run-vcpkg@v11
+      with:
+        runVcpkgInstall: true # No commit ID, so it uses the latest vcpkg
+
+    - name: Verify vcpkg installation
+      if: steps.vcpkg_latest.outcome == 'failure' && steps.vcpkg_pinned.outcome == 'failure'
+      run: |
+        echo "::error::Both pinned and latest vcpkg installations failed."
+        exit 1
 
     - name: Set GSL_DIR Environment Variable
       shell: pwsh
