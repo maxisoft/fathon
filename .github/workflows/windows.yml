@@ -34,13 +34,16 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+        # Enable caching for pip dependencies
+        cache: 'pip'
 
     - name: Setup and run vcpkg
       uses: lukka/run-vcpkg@v11
       with:
         # This tells the action to find vcpkg.json and run 'vcpkg install'
         runVcpkgInstall: true
-        vcpkgGitCommitId: '5b1214315250939257ef5d62ecdcbca18cf4fb1c' # Pin vcpkg version for reproducibility
+        # The action has built-in caching for the compiled libraries (GSL).
+        vcpkgGitCommitId: '120deac3062162151622ca4860575a33844ba10b' # Pin vcpkg version for reproducibility
 
     - name: Install Python dependencies
       run: |
