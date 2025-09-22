@@ -29,7 +29,6 @@ def get_gsl_paths():
 
         def gen_vcpkg_paths():
             # 1. From environment variables set by actions/run-vcpkg
-
             base_paths = {Path.cwd(), Path(__file__).parent}
             vcpkg_root_env = os.getenv("RUNVCPKG_VCPKG_ROOT") or os.getenv("VCPKG_ROOT")
             if vcpkg_root_env:
@@ -135,8 +134,8 @@ def get_extension(module_name, src_name, gsl_inc, gsl_lib):
 
     system = platform.system()
     if system == "Windows":
-        extra_compile_args = ["/O2", "/openmp"]
-        extra_link_args = []
+        extra_compile_args = ["/O2", "/openmp:experimental", "/Qpar"]
+        extra_link_args = ['/openmp:experimental']
     elif system == "Darwin" and platform.processor() == "arm":
         llvm_path = Path("/opt/homebrew/opt/llvm")
         os.environ["CC"] = str(llvm_path / "bin/clang")
@@ -152,6 +151,7 @@ def get_extension(module_name, src_name, gsl_inc, gsl_lib):
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args
     )
+
 
 if __name__ == "__main__":
     if sys.version_info[0] != 3:

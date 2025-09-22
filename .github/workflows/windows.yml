@@ -50,6 +50,7 @@ jobs:
       # 👇 Force triplet for all vcpkg installs
       VCPKG_DEFAULT_TRIPLET: x64-windows-static
       VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static
+      VCPKG_DISABLE_METRICS: 1
       AUTO_SEARCH_VCPKG_GSL: "true"
 
     steps:
@@ -86,15 +87,14 @@ jobs:
         restore-keys: |
           vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}-${{ inputs.vcpkg-commit-id }}-
 
-    - name: Attempt to install GSL with pinned vcpkg
+    - name: Install pinned vcpkg
       id: vcpkg_pinned
       uses: lukka/run-vcpkg@v11
       with:
-        runVcpkgInstall: true
         vcpkgGitCommitId: ${{ inputs.vcpkg-commit-id || '120deac3062162151622ca4860575a33844ba10b' }}
       continue-on-error: true
 
-    - name: Attempt to install GSL with latest vcpkg (on failure)
+    - name: Install latest vcpkg (on failure)
       id: vcpkg_latest
       if: steps.vcpkg_pinned.outcome == 'failure'
       uses: lukka/run-vcpkg@v11
@@ -105,6 +105,14 @@ jobs:
         echo "::error::Both pinned and latest vcpkg installations failed."
         exit 1
 
+    - name: Setup GSL via vcpkg
+      shell: pwsh
+      run: |
+        cd ${{ github.workspace }}/vcpkg
+        ls
+        .\vcpkg install
+
+
     - name: Install Python dependencies
       run: uv pip install cython wheel pytest setuptools numpy${{ inputs.numpy-version }}
 
@@ -113,7 +121,7 @@ jobs:
       run: uv build --wheel --verbose --no-build-isolation
 
     - name: uv lock
-      run: uv lock
+      run: uv lock && uv export --format requirements-txt
 
     - name: Generate artifact attestation
       if: github.event_name == 'workflow_dispatch' && inputs.generate-attestation
@@ -133,6 +141,13 @@ jobs:
       with:
         name: fathon-wheel-${{ matrix.python-version }}
         path: dist/
+
+    - name: Upload requirements.txt Artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: fathon-requirements-${{ matrix.python-version }}
+        path: requirements.txt
 
     - name: Upload GSL Library Artifact
       if: always()
