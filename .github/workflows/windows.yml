@@ -35,6 +35,17 @@ jobs:
         python-version: ${{ matrix.python-version }}
         enable-cache: true
 
+    - name: Cache vcpkg dependencies
+      uses: actions/cache@v4
+      with:
+        # The path to the directory where vcpkg installs the libraries
+        path: ${{ github.workspace }}/vcpkg/installed
+        # The key is composed of the runner OS, the hash of the vcpkg manifest,
+        # and the pinned vcpkg commit ID to ensure the cache is specific and reproducible.
+        key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}-${{ '120deac3062162151622ca4860575a33844ba10b' }}
+        restore-keys: |
+          vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}-
+
     - name: Attempt to install GSL with pinned vcpkg
       id: vcpkg_pinned
       uses: lukka/run-vcpkg@v11
