@@ -261,7 +261,7 @@ cdef class DCCA:
     @cython.boundscheck(False)
     @cython.wraparound(False)
     @cython.nonecheck(False)
-    cpdef multiFitFlucVec(self, np.ndarray[np.int_t, ndim=2, mode='c'] limitsList, float logBase=np.e, bint verbose=False):
+    cpdef multiFitFlucVec(self, np.ndarray[np.int32_t, ndim=2, mode='c'] limitsList, float logBase=np.e, bint verbose=False):
         """Fit of the fluctuations values in different intervals at the same time.
 
         Parameters
