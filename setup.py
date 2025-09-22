@@ -27,8 +27,15 @@ def get_gsl_paths():
     system = platform.system()
     if system == "Windows":
         candidate_paths = [
+            # For vcpkg classic mode in project folder
+            Path.cwd() / "vcpkg" / "packages" / "gsl_x64-windows-static",
+            # For vcpkg manifest mode (`vcpkg.json`) in project folder
+            Path.cwd() / "vcpkg_installed" / "x64-windows-static",
             Path("C:/gsl"),
             Path("C:/Tools/vcpkg/packages/gsl_x64-windows-static"),
+            Path("D:/a/fathon/fathon/vcpkg/packages/gsl_x64-windows-static"),
+            Path("./vcpkg/packages/gsl_x64-windows-static"),
+            Path("./vcpkg_installed/packages/gsl_x64-windows-static"),
         ]
 
         search_bases = [
