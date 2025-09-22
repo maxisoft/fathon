@@ -20,6 +20,10 @@ jobs:
       contents: read   # Required to read source code
       attestations: write # Required to write attestations
 
+    # Use uv in the system python environment for all steps
+    env:
+      UV_SYSTEM_PYTHON: 1
+
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -29,11 +33,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+    - name: Set up uv and Python
+      uses: astral-sh/setup-uv@v1
       with:
         python-version: ${{ matrix.python-version }}
-        cache: 'pip'
+        # Caching is enabled by default in the action
 
     - name: Attempt to install GSL with pinned vcpkg
       id: vcpkg_pinned
@@ -62,13 +66,11 @@ jobs:
         echo "GSL_DIR permanently set for this job: $gsl_dir"
 
     - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install cython wheel pytest
+      run: uv pip install cython wheel pytest
 
     - name: Build fathon wheel
-      # Use --no-build-isolation to make the GSL_DIR env var available to setup.py
-      run: python -m pip wheel . -w dist --verbose --no-build-isolation
+      # Use --no-isolation to make the GSL_DIR env var available to setup.py
+      run: uv wheel . -w dist --verbose --no-isolation
 
     - name: Generate artifact attestation
       if: github.event_name == 'workflow_dispatch' && inputs.generate-attestation
@@ -77,7 +79,7 @@ jobs:
         subject-path: "dist/*.whl"
 
     - name: Install fathon from wheel
-      run: python -m pip install dist/*.whl
+      run: uv pip install dist/*.whl
 
     - name: Run tests
       run: pytest tests/
