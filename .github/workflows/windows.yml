@@ -67,15 +67,13 @@ jobs:
       uses: lukka/run-vcpkg@v11
       with:
         runVcpkgInstall: true
-        vcpkgGitCommitId: ${{ inputs.vcpkg-commit-id }}
+        vcpkgGitCommitId: ${{ inputs.vcpkg-commit-id || '120deac3062162151622ca4860575a33844ba10b' }}
       continue-on-error: true
 
     - name: Attempt to install GSL with latest vcpkg (on failure)
       id: vcpkg_latest
       if: steps.vcpkg_pinned.outcome == 'failure'
       uses: lukka/run-vcpkg@v11
-      with:
-        runVcpkgInstall: true # No commit ID, so it uses the latest vcpkg
 
     - name: Verify vcpkg installation
       if: steps.vcpkg_latest.outcome == 'failure' && steps.vcpkg_pinned.outcome == 'failure'
