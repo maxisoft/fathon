@@ -94,7 +94,8 @@ jobs:
       run: uv pip install cython wheel pytest setuptools
 
     - name: Build fathon wheel
-      run: uv wheel . -w dist --verbose --no-isolation
+      # Use --no-build-isolation to make the GSL_DIR env var available to setup.py
+      run: uv build --wheel . --output-dir dist --verbose --no-build-isolation
 
     - name: Generate artifact attestation
       if: github.event_name == 'workflow_dispatch' && inputs.generate-attestation
